@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+  OWNER
+}
+
+enum CampLevel {
+  FIRST_SECONDARY
+  SECOND_SECONDARY
+  BACCALAUREATE
+}
+
+enum ModerationAction {
+  WARN
+  MUTE
+  BAN
+  DELETE
+}
+
+model User {
+  id          Int              @id @default(autoincrement())
+  telegramId  BigInt           @unique
+  name        String?
+  username    String?
+  role        Role             @default(STUDENT)
+  createdAt   DateTime         @default(now())
+  notes       StickyNote[]
+  enrollments CampEnrollment[]
+}
+
+model Group {
+  id             Int              @id @default(autoincrement())
+  telegramChatId BigInt           @unique
+  title          String
+  linksBlocked   Boolean          @default(true)
+  antiSpam       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  actions        ModerationLog[]
+}
+
+model StickyNote {
+  id        Int      @id @default(autoincrement())
+  content   String
+  subject   String?
+  remindAt  DateTime?
+  isDone    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Camp {
+  id          Int              @id @default(autoincrement())
+  title       String
+  description String?
+  level       CampLevel
+  startsAt    DateTime
+  endsAt      DateTime
+  isPublished Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  enrollments CampEnrollment[]
+}
+
+model CampEnrollment {
+  id         Int      @id @default(autoincrement())
+  campId     Int
+  userId     Int
+  enrolledAt DateTime @default(now())
+  camp       Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campId, userId])
+}
+
+model ModerationLog {
+  id               Int              @id @default(autoincrement())
+  action           ModerationAction
+  reason           String?
+  targetTelegramId BigInt
+  createdAt        DateTime         @default(now())
+  groupId          Int
+  group            Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
