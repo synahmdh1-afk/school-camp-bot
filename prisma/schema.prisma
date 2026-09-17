@@ -11,19 +11,17 @@ datasource db {
 // 1. المستخدمين والصلاحيات
 // ==========================================
 model User {
-  id           BigInt   @id // Telegram ID
+  id           BigInt   @id
   name         String
   username     String?
-  role         Role     @default(USER) // المالك، أدمن، مستخدم
+  role         Role     @default(USER)
   joinedAt     DateTime @default(now())
   
-  // Camp Pro (الأهداف والإحصائيات)
-  dailyGoal    Int?     // بالدقائق
-  weeklyGoal   Int?     // بالدقائق
+  dailyGoal    Int?
+  weeklyGoal   Int?
   streak       Int      @default(0)
-  totalStudy   Int      @default(0) // إجمالي وقت المذاكرة
+  totalStudy   Int      @default(0)
   
-  // العلاقات (Relations)
   notes            Note[]
   studySessions    StudySession[]
   groupMemberships GroupMember[]
@@ -43,17 +41,15 @@ model Button {
   id           Int      @id @default(autoincrement())
   name         String
   emoji        String?
-  type         ButtonType // نوع المحتوى
-  content      String?    // نص، رابط، مسار صورة/ملف
+  type         ButtonType
+  content      String?
   order        Int      @default(0)
   isHidden     Boolean  @default(false)
   
-  // الأقسام المتعددة المستويات (Sections)
   parentId     Int?
   parent       Button?  @relation("ButtonHierarchy", fields: [parentId], references: [id])
   children     Button[] @relation("ButtonHierarchy")
 
-  // سلة المحذوفات (Soft Delete)
   isDeleted    Boolean  @default(false)
   deletedAt    DateTime?
   deletedById  BigInt?
@@ -71,12 +67,11 @@ enum ButtonType {
 // 3. إدارة الجروبات والرتب
 // ==========================================
 model Group {
-  id           BigInt   @id // Telegram Group ID
+  id           BigInt   @id
   name         String
   addedAt      DateTime @default(now())
   isActive     Boolean  @default(true)
   
-  // إعدادات الجروب والحماية
   antiSpam     Boolean  @default(false)
   antiLink     Boolean  @default(false)
   welcomeMsg   String?
@@ -90,23 +85,23 @@ model GroupMember {
   userId       BigInt
   groupId      BigInt
   rank         GroupRank @default(NORMAL)
-  warnings     Int       @default(0) // الحد الأقصى 3
+  warnings     Int       @default(0)
   isMuted      Boolean   @default(false)
   
   user         User      @relation(fields: [userId], references: [id])
   group        Group     @relation(fields: [groupId], references: [id])
 
-  @@unique([userId, groupId]) // منع التكرار للعضو في نفس الجروب
+  @@unique([userId, groupId])
 }
 
 enum GroupRank {
-  MAIN_OWNER // المالك الأساسي
-  OWNER      // المالك
-  CREATOR    // المنشئ
-  MANAGER    // المدير
-  ADMIN      // الأدمن
-  VIP        // المميز
-  NORMAL     // عضو عادي
+  MAIN_OWNER
+  OWNER
+  CREATOR
+  MANAGER
+  ADMIN
+  VIP
+  NORMAL
 }
 
 // ==========================================
@@ -121,7 +116,6 @@ model Note {
   isCompleted  Boolean  @default(false)
   createdAt    DateTime @default(now())
   
-  // سلة المحذوفات
   isDeleted    Boolean  @default(false)
   
   user         User     @relation(fields: [userId], references: [id])
@@ -135,7 +129,7 @@ model StudySession {
   userId         BigInt
   startTime      DateTime  @default(now())
   endTime        DateTime?
-  actualDuration Int       @default(0) // وقت المذاكرة الفعلي بالدقائق
+  actualDuration Int       @default(0)
   status         SessionStatus @default(IN_PROGRESS)
   
   user           User      @relation(fields: [userId], references: [id])
@@ -148,13 +142,12 @@ enum SessionStatus {
   STOPPED
 }
 
-// الكامب الجماعي داخل الجروب
 model GroupCamp {
   id           Int      @id @default(autoincrement())
   groupId      BigInt
-  messageId    BigInt   // ID رسالة الكامب لتحديثها بدون إرسال رسائل جديدة
+  messageId    BigInt
   status       CampStatus @default(ACTIVE)
-  isLocked     Boolean  @default(false) // قفل الانضمام
+  isLocked     Boolean  @default(false)
   createdAt    DateTime @default(now())
   
   group        Group    @relation(fields: [groupId], references: [id])
@@ -184,8 +177,8 @@ model CampParticipant {
 model ActionLog {
   id           Int      @id @default(autoincrement())
   adminId      BigInt
-  action       String   // العملية (حظر، تعديل زر، إلخ)
-  target       String?  // العنصر المستهدف
+  action       String
+  target       String?
   details      String?
   createdAt    DateTime @default(now())
 }
