@@ -1,15 +1,20 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist"
+  "name": "school-camp-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "prisma generate && tsc",
+    "start": "node dist/index.js"
   },
-  "include": [
-    "src/index.ts"
-  ]
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "dotenv": "^16.0.0",
+    "telegraf": "^4.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "prisma": "^5.0.0",
+    "typescript": "^5.0.0"
+  }
 }
