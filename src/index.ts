@@ -1,42 +1,89 @@
-import { Telegraf } from 'telegraf';
-import { config } from './config.js';
-import { prisma } from './database.js';
-import { mainMenu } from './bot/keyboards.js';
-import { listNotes } from './modules/notes/index.js';
-import { listCamps } from './modules/camps/index.js';
-import { moderation } from './modules/moderation/index.js';
+import { Telegraf, Markup } from 'telegraf';
+import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
 
-const bot = new Telegraf(config.token);
+dotenv.config();
 
+const token = process.env.BOT_TOKEN;
+if (!token) {
+    throw new Error('BOT_TOKEN must be provided!');
+}
+
+const bot = new Telegraf(token);
+const prisma = new PrismaClient();
+
+const OWNER_ID = parseInt(process.env.OWNER_ID || '0');
+
+// تسجيل المستخدمين تلقائياً
 bot.use(async (ctx, next) => {
-  if (ctx.from) {
-    await prisma.user.upsert({
-      where: { telegramId: BigInt(ctx.from.id) },
-      update: { name: ctx.from.first_name, username: ctx.from.username },
-      create: { telegramId: BigInt(ctx.from.id), name: ctx.from.first_name, username: ctx.from.username, role: config.ownerTelegramId === BigInt(ctx.from.id) ? 'OWNER' : 'STUDENT' },
-    });
-  }
-  return next();
+    if (ctx.from) {
+        try {
+            await prisma.user.upsert({
+                where: { id: BigInt(ctx.from.id) },
+                update: {
+                    name: ctx.from.first_name,
+                    username: ctx.from.username || null,
+                },
+                create: {
+                    id: BigInt(ctx.from.id),
+                    name: ctx.from.first_name,
+                    username: ctx.from.username || null,
+                    role: ctx.from.id === OWNER_ID ? 'OWNER' : 'USER',
+                },
+            });
+        } catch (error) {
+            console.error('Error saving user:', error);
+        }
+    }
+    return next();
 });
 
-bot.use(moderation);
+// أمر /start
+bot.command('start', async (ctx) => {
+    let userRole = 'USER';
+    try {
+        const user = await prisma.user.findUnique({ where: { id: BigInt(ctx.from.id) } });
+        if (user) userRole = user.role;
+    } catch (e) { console.error(e); }
 
-bot.start((ctx) => ctx.reply('أهلاً بك في البوت الدراسي ✨\nاختر الخدمة التي تريدها:', mainMenu()));
-bot.command('help', (ctx) => ctx.reply('استخدم الأزرار للوصول إلى المعسكرات والملاحظات.'));
-bot.action('notes:list', async (ctx) => { await ctx.answerCbQuery(); await listNotes(ctx); });
-bot.action('camps:list', async (ctx) => { await ctx.answerCbQuery(); await listCamps(ctx); });
-bot.action('notes:new', async (ctx) => { await ctx.answerCbQuery(); await ctx.reply('أرسل الآن نص الملاحظة.'); });
-bot.action('help', async (ctx) => { await ctx.answerCbQuery(); await ctx.reply('المعسكرات مجانية للفئات المحددة، والملاحظات خاصة بك.'); });
+    const buttons = [
+        [Markup.button.callback('📚 أقسام المذاكرة', 'menu_sections')],
+        [Markup.button.callback('🏕️ Camp Pro', 'camp_pro_menu')],
+    ];
 
-bot.on('text', async (ctx) => {
-  if (ctx.chat.type !== 'private' || ctx.message.text.startsWith('/')) return;
-  const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: BigInt(ctx.from.id) } });
-  await prisma.stickyNote.create({ data: { userId: user.id, content: ctx.message.text } });
-  await ctx.reply('تم حفظ الملاحظة ✅', mainMenu());
+    // إظهار لوحة المطور للمالك أو الأدمن فقط
+    if (userRole === 'OWNER' || userRole === 'ADMIN') {
+        buttons.push([Markup.button.callback('👨‍💻 لوحة المطور', 'admin_panel')]);
+    }
+
+    const keyboard = Markup.inlineKeyboard(buttons);
+    await ctx.reply(أهلاً بك يا ${ctx.from.first_name} في بوت ثانوية الدراسي! 🎓, keyboard);
 });
 
-bot.catch((error) => console.error('Bot error:', error));
-bot.launch().then(() => console.log('البوت يعمل بنجاح'));
+// لوحة المطور
+bot.action('admin_panel', async (ctx) => {
+    const user = await prisma.user.findUnique({ where: { id: BigInt(ctx.from!.id) } });
+    
+    if (user?.role !== 'OWNER' && user?.role !== 'ADMIN') {
+        return ctx.answerCbQuery('❌ ليس لديك صلاحية لدخول لوحة المطور.', { show_alert: true });
+    }
+
+    const adminButtons = [
+        [Markup.button.callback('📋 إدارة المحتوى', 'admin_content'), Markup.button.callback('👥 المستخدمون', 'admin_users')],
+        [Markup.button.callback('📢 الإعلانات', 'admin_ads'), Markup.button.callback('👨‍💼 الصلاحيات', 'admin_roles')],
+        [Markup.button.callback('🗑️ سلة المحذوفات', 'admin_trash'), Markup.button.callback('⚙️ الإعدادات', 'admin_settings')]
+    ];
+
+    await ctx.editMessageText('👨‍💻 لوحة المطور\nأهلاً بك في لوحة التحكم. اختر القسم المراد إدارته:', 
+        { parse_mode: 'Markdown', ...Markup.inlineKeyboard(adminButtons) }
+    );
+});
+
+bot.launch().then(() => {
+    console.log('🤖 Bot is running...');
+}).catch((err) => {
+    console.error('Error starting bot:', err);
+});
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
