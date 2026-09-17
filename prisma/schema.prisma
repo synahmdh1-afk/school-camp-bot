@@ -1,3 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. المستخدمين والصلاحيات
+// ==========================================
+model User {
+  id           BigInt   @id // Telegram ID
+  name         String
+  username     String?
+  role         Role     @default(USER) // المالك، أدمن، مستخدم
+  joinedAt     DateTime @default(now())
+  
+  // Camp Pro (الأهداف والإحصائيات)
+  dailyGoal    Int?     // بالدقائق
+  weeklyGoal   Int?     // بالدقائق
+  streak       Int      @default(0)
+  totalStudy   Int      @default(0) // إجمالي وقت المذاكرة
+  
+  // العلاقات (Relations)
+  notes            Note[]
+  studySessions    StudySession[]
+  groupMemberships GroupMember[]
+  campParticipants CampParticipant[]
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  USER
+}
+
+// ==========================================
+// 2. القائمة الرئيسية والمحتوى الديناميكي
+// ==========================================
+model Button {
+  id           Int      @id @default(autoincrement())
+  name         String
+  emoji        String?
+  type         ButtonType // نوع المحتوى
+  content      String?    // نص، رابط، مسار صورة/ملف
+  order        Int      @default(0)
+  isHidden     Boolean  @default(false)
+  
+  // الأقسام المتعددة المستويات (Sections)
+  parentId     Int?
+  parent       Button?  @relation("ButtonHierarchy", fields: [parentId], references: [id])
+  children     Button[] @relation("ButtonHierarchy")
+
+  // سلة المحذوفات (Soft Delete)
+  isDeleted    Boolean  @default(false)
+  deletedAt    DateTime?
+  deletedById  BigInt?
+}
+
+enum ButtonType {
+  CONTENT
+  LINK
+  WEB_APP
+  FUNCTION
+  SECTION
+}
+
+// ==========================================
+// 3. إدارة الجروبات والرتب
+// ==========================================
+model Group {
+  id           BigInt   @id // Telegram Group ID
+  name         String
+  addedAt      DateTime @default(now())
+  isActive     Boolean  @default(true)
+  
+  // إعدادات الجروب والحماية
+  antiSpam     Boolean  @default(false)
+  antiLink     Boolean  @default(false)
+  welcomeMsg   String?
+  
+  members      GroupMember[]
+  groupCamps   GroupCamp[]
+}
+
+model GroupMember {
+  id           Int       @id @default(autoincrement())
+  userId       BigInt
+  groupId      BigInt
+  rank         GroupRank @default(NORMAL)
+  warnings     Int       @default(0) // الحد الأقصى 3
+  isMuted      Boolean   @default(false)
+  
+  user         User      @relation(fields: [userId], references: [id])
+  group        Group     @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, groupId]) // منع التكرار للعضو في نفس الجروب
+}
+
+enum GroupRank {
+  MAIN_OWNER // المالك الأساسي
+  OWNER      // المالك
+  CREATOR    // المنشئ
+  MANAGER    // المدير
+  ADMIN      // الأدمن
+  VIP        // المميز
+  NORMAL     // عضو عادي
+}
+
+// ==========================================
+// 4. الملاحظات (Sticky Notes)
+// ==========================================
+model Note {
+  id           Int      @id @default(autoincrement())
+  userId       BigInt
+  text         String
+  category     String?
+  reminderAt   DateTime?
+  isCompleted  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  
+  // سلة المحذوفات
+  isDeleted    Boolean  @default(false)
+  
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+// ==========================================
+// 5. Camp Pro (المذاكرة الفردية والجماعية)
+// ==========================================
+model StudySession {
+  id             Int       @id @default(autoincrement())
+  userId         BigInt
+  startTime      DateTime  @default(now())
+  endTime        DateTime?
+  actualDuration Int       @default(0) // وقت المذاكرة الفعلي بالدقائق
+  status         SessionStatus @default(IN_PROGRESS)
+  
+  user           User      @relation(fields: [userId], references: [id])
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  STOPPED
+}
+
 // الكامب الجماعي داخل الجروب
 model GroupCamp {
   id           Int      @id @default(autoincrement())
