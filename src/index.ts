@@ -71,7 +71,7 @@ bot.command("start", async (ctx) => {
     let welcomeText = welcomeSetting?.value || "أهلاً بك يا {name} في بوت ثانوية الدراسي! 🎓\nاختر من القائمة أدناه:";
     
     // استبدال {name} باسم المستخدم الحقيقي
-    welcomeText = welcomeText.replace("{name}", ctx.from.first_name);
+    welcomeText = welcomeText.replace(/{name}/g, ctx.from.first_name);
 
     const keyboard = await getMainMenuKeyboard(ctx.from.id);
     
@@ -105,7 +105,7 @@ bot.action("main_menu", async (ctx) => {
     
     let welcomeSetting = await prisma.setting.findUnique({ where: { key: "welcome_message" } });
     let welcomeText = welcomeSetting?.value || "أهلاً بك يا {name} في بوت ثانوية الدراسي! 🎓\nاختر من القائمة أدناه:";
-    welcomeText = welcomeText.replace("{name}", ctx.from!.first_name);
+    welcomeText = welcomeText.replace(/{name}/g, ctx.from!.first_name);
 
     await ctx.editMessageText(welcomeText, keyboard);
 });
