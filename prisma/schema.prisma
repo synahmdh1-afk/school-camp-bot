@@ -182,3 +182,12 @@ model ActionLog {
   details      String?
   createdAt    DateTime @default(now())
 }
+
+// ==========================================
+// 7. إعدادات البوت العامة (Settings)
+// ==========================================
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
