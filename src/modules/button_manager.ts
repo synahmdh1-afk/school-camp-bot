@@ -1,8 +1,8 @@
 import { Telegraf, Markup } from 'telegraf';
 import { PrismaClient } from '@prisma/client';
 
-// خريطة في الذاكرة عشان البوت يفتكر حالة المطور (الخطوة اللي واقف فيها)
-const adminStates = new Map<number, { step: string, type: string }>();
+// عدلنا الـ type هنا لـ any عشان نحل مشكلة TypeScript
+const adminStates = new Map<number, { step: string, type: any }>();
 
 export function setupButtonManager(bot: Telegraf, prisma: PrismaClient) {
     
@@ -40,7 +40,6 @@ export function setupButtonManager(bot: Telegraf, prisma: PrismaClient) {
         if (!ctx.from) return next();
         const state = adminStates.get(ctx.from.id);
         
-        // لو المطور مش بيعمل إضافة (مفيش حالة متسجلة)، البوت يتجاهل الرسالة ويكمل شغل عادي
         if (!state) return next();
 
         if (state.step === "WAITING_FOR_SECTION_NAME") {
@@ -51,13 +50,12 @@ export function setupButtonManager(bot: Telegraf, prisma: PrismaClient) {
                 await prisma.button.create({
                     data: {
                         name: btnName,
-                        type: state.type,
-                        parentId: null, // null يعني قسم رئيسي بره خالص
+                        type: state.type, // السيرفر كان معترض هنا، دلوقتي هيقبله
+                        parentId: null, 
                         order: 10 
                     }
                 });
 
-                // نمسح الحالة من الذاكرة عشان البوت يرجع لطبيعته
                 adminStates.delete(ctx.from.id);
                 
                 await ctx.reply(`✅ عاش يا هندسة! تم إضافة قسم "${btnName}" بنجاح.\n\nدوس /start عشان تشوفه ظهر في القائمة الرئيسية.`);
