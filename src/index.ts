@@ -2,10 +2,9 @@ import { Telegraf, Markup } from 'telegraf';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 
-// استدعاء الأنظمة
 import { setupMenuModule } from './modules/menu';
 import { getAdminPanelKeyboard, getContentManagementKeyboard } from './modules/admin';
-import { setupButtonManager } from './modules/button_manager'; // 👈 الموديول الجديد
+import { setupButtonManager } from './modules/button_manager';
 
 dotenv.config();
 
@@ -36,9 +35,8 @@ bot.use(async (ctx, next) => {
     return next();
 });
 
-// تشغيل الأنظمة
 const { buildDynamicKeyboard } = setupMenuModule(bot, prisma);
-setupButtonManager(bot, prisma); // 👈 تشغيل نظام إضافة الأزرار
+setupButtonManager(bot, prisma);
 
 bot.command("start", async (ctx) => {
     let welcomeSetting = await prisma.setting.findUnique({ where: { key: "welcome_message" } });
@@ -74,13 +72,13 @@ bot.action("admin_content", async (ctx) => {
     await ctx.editMessageText("إدارة رسائل البوت والردود التلقائية", contentKeyboard);
 });
 
-// تم إزالة زرار (تعديل الأزرار) من هنا عشان يشتغل بجد
+// قائمة الأزرار الفاضية (شيلنا منها الأزرار الشفافة عشان تشتغل)
 const emptyAdminButtons = [
     "admin_settings", "admin_users", "admin_camps", "admin_ads", 
     "admin_trash", "admin_system_support", "toggle_login_notif", 
     "toggle_block_notif", "admin_guide", "admin_groups",
     "admin_welcome_msg", "admin_auto_replies", 
-    "admin_transparent_buttons", "admin_shortcuts", "admin_edits_list", 
+    "admin_shortcuts", "admin_edits_list", 
     "admin_edit_content", "admin_deep_link", "admin_translation", 
     "admin_bot_info", "admin_help"
 ];
