@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import { setupMenuModule } from './modules/menu';
 import { getAdminPanelKeyboard, getContentManagementKeyboard, getWelcomeMessageKeyboard } from './modules/admin';
 import { setupButtonManager } from './modules/button_manager';
-import { setupWelcomeManager } from './modules/welcome_manager'; // 👈 استدعاء النظام الجديد
+import { setupWelcomeManager } from './modules/welcome_manager';
 
 dotenv.config();
 
@@ -15,6 +15,9 @@ if (!token) throw new Error("BOT_TOKEN must be provided!");
 const bot = new Telegraf(token);
 const prisma = new PrismaClient();
 const OWNER_ID = parseInt(process.env.OWNER_ID || "0");
+
+// 🛡️ دالة تنظيف النصوص عشان تليجرام ميهنجش لو الاسم فيه رموز
+const escapeHTML = (str: string) => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 bot.use(async (ctx, next) => {
     if (ctx.from) {
@@ -39,34 +42,46 @@ bot.use(async (ctx, next) => {
 // تشغيل الأنظمة
 const { buildDynamicKeyboard } = setupMenuModule(bot, prisma);
 setupButtonManager(bot, prisma);
-setupWelcomeManager(bot, prisma); // 👈 تشغيل نظام رسالة الترحيب
+setupWelcomeManager(bot, prisma); 
 
 bot.command("start", async (ctx) => {
     let welcomeSetting = await prisma.setting.findUnique({ where: { key: "welcome_message" } });
     let welcomeText = welcomeSetting?.value || "أهلاً بك يا #name في بوت ثانوية الدراسي! 🎓\nاختر من القائمة أدناه:";
 
-    // 🚀 السحر هنا: استبدال الهاشتاقات اللي المطور كتبها ببيانات المستخدم الحقيقية
-    welcomeText = welcomeText.replace(/#name_user/g, `<a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>`);
-    welcomeText = welcomeText.replace(/#username/g, ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name);
-    welcomeText = welcomeText.replace(/#name/g, ctx.from.first_name);
+    // تجهيز اسم المستخدم بأمان
+    const safeFirstName = escapeHTML(ctx.from.first_name || "مستخدم");
+    const safeUsername = ctx.from.username ? `@${escapeHTML(ctx.from.username)}` : safeFirstName;
+
+    // استبدال الهاشتاقات ببيانات المستخدم الحقيقية بأمان
+    welcomeText = welcomeText.replace(/#name_user/g, `<a href="tg://user?id=${ctx.from.id}">${safeFirstName}</a>`);
+    welcomeText = welcomeText.replace(/#username/g, safeUsername);
+    welcomeText = welcomeText.replace(/#name/g, safeFirstName);
     welcomeText = welcomeText.replace(/#id/g, ctx.from.id.toString());
-    welcomeText = welcomeText.replace(/#points/g, "0"); // مؤقتاً صفر لحد ما نبرمج نظام النقاط
+    welcomeText = welcomeText.replace(/#points/g, "0"); 
     welcomeText = welcomeText.replace(/#invitelink/g, `https://t.me/${ctx.botInfo.username}?start=${ctx.from.id}`);
 
     const user = await prisma.user.findUnique({ where: { id: BigInt(ctx.from.id) } });
     const keyboard = await buildDynamicKeyboard(null);
 
+    // لو المطور، نضيف زرار لوحة المطور
     if (user && (user.role === "OWNER" || user.role === "ADMIN")) {
         keyboard.reply_markup.inline_keyboard.push([
             Markup.button.callback("👨‍💻 لوحة المطور", "admin_panel")
         ]);
     }
 
-    // خلينا parse_mode HTML عشان هاشتاج #name_user يشتغل ويعمل المنشن الأزرق
-    await ctx.reply(welcomeText, {
-        reply_markup: keyboard.reply_markup,
-        parse_mode: "HTML" 
-    });
+    // 🛡️ نظام الطوارئ: لو الـ HTML باظ لأي سبب، البوت يبعت الرسالة عادي بدل ما يعطل
+    try {
+        await ctx.reply(welcomeText, {
+            reply_markup: keyboard.reply_markup,
+            parse_mode: "HTML" 
+        });
+    } catch (error) {
+        console.warn("HTML Parse Error, sending as plain text...");
+        await ctx.reply(welcomeText, {
+            reply_markup: keyboard.reply_markup
+        });
+    }
 });
 
 bot.action("admin_panel", async (ctx) => {
@@ -102,7 +117,7 @@ bot.action("help_welcome_msg", async (ctx) => {
     await ctx.answerCbQuery("هذا القسم مخصص للتحكم الكامل في رسالة الترحيب، إضافة وسائط، تعديل الأزرار المرفقة، وضبط الإعدادات.", { show_alert: true });
 });
 
-// شيلنا "set_welcome_msg" من هنا عشان الزرار يشتغل بجد وميطلعش رسالة "قيد التطوير"
+// شيلنا "set_welcome_msg" عشان تشتغل بجد
 const emptyAdminButtons = [
     "admin_settings", "admin_users", "admin_camps", "admin_ads", 
     "admin_trash", "admin_system_support", "toggle_login_notif", 
