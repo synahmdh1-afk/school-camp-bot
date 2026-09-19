@@ -5,29 +5,51 @@ const welcomeStates = new Map<number, string>();
 
 export function setupWelcomeManager(bot: Telegraf, prisma: PrismaClient) {
     
-    // لما المطور يدوس على "تعيين الرسالة"
     bot.action("set_welcome_msg", async (ctx) => {
         if (!ctx.from) return;
         
-        // نسجل إن المطور بيكتب رسالة الترحيب دلوقتي
         welcomeStates.set(ctx.from.id, "WAITING_FOR_WELCOME_MSG");
         
-        // نفس النص اللي في الصورة بالظبط
-        const text = `• إرسال الكليشة الآن.\n\n- يمكنك إضافة بعض العناصر إلى كليشة start باستخدام الهاشتاقات التالية:\n\n1. #name_user : لوضع اسم الشخص مع معرفه داخل اسمه\n2. #username : لوضع اسم مستخدم الشخص مع إضافة @\n3. #name : لوضع اسم الشخص\n4. #id : لوضع ايدي الشخص\n5. #points : لوضع عدد نقاط الشخص\n6. #invitelink : لوضع رابط الدعوة`;
+        // النص الشامل بتاعك + الهاشتاقات (متظبط بـ HTML عشان يظهر بشياكة)
+        const text = `📝 <b>التنسيقات المدعومة للكليشة</b>
+
+أرسل الرسالة بأي تنسيق وسيتم التعرّف عليه ✨
+
+━━━━━━━━━━━━━━━
+🌐 <b>تنسيقات HTML (موصى بها):</b>
+
+&lt;b&gt;نص&lt;/b&gt; → <b>عريض</b>
+&lt;i&gt;نص&lt;/i&gt; → <i>مائل</i>
+&lt;u&gt;نص&lt;/u&gt; → <u>خط سفلي</u>
+&lt;s&gt;نص&lt;/s&gt; → <s>يتوسطه خط</s>
+&lt;tg-spoiler&gt;نص&lt;/tg-spoiler&gt; → <tg-spoiler>مخفي</tg-spoiler>
+&lt;code&gt;نص&lt;/code&gt; → <code>كود</code>
+&lt;a href="URL"&gt;نص&lt;/a&gt; → رابط
+
+━━━━━━━━━━━━━━━
+🔗 <b>الهاشتاقات (عناصر الكليشة):</b>
+
+1. <code>#name_user</code> : وضع اسم الشخص مع منشن
+2. <code>#username</code> : وضع يوزرنيم الشخص
+3. <code>#name</code> : اسم الشخص فقط
+4. <code>#id</code> : ايدي الشخص
+5. <code>#points</code> : عدد نقاط الشخص
+6. <code>#invitelink</code> : رابط الدعوة
+
+👇 <b>أرسل كليشة الترحيب الجديدة الآن:</b>`;
         
-        await ctx.editMessageText(text, 
-            Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "cancel_welcome_msg")]])
-        );
+        await ctx.editMessageText(text, {
+            parse_mode: "HTML",
+            reply_markup: Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "cancel_welcome_msg")]]).reply_markup
+        });
     });
 
-    // زرار الإلغاء
     bot.action("cancel_welcome_msg", async (ctx) => {
         if (!ctx.from) return;
         welcomeStates.delete(ctx.from.id);
         await ctx.editMessageText("❌ تم إلغاء تعيين رسالة الترحيب.");
     });
 
-    // استقبال رسالة الترحيب الجديدة من المطور
     bot.on("text", async (ctx, next) => {
         if (!ctx.from) return next();
         const state = welcomeStates.get(ctx.from.id);
@@ -36,7 +58,6 @@ export function setupWelcomeManager(bot: Telegraf, prisma: PrismaClient) {
             const newWelcomeMsg = ctx.message.text;
             
             try {
-                // حفظ الرسالة في الداتا بيز
                 await prisma.setting.upsert({
                     where: { key: "welcome_message" },
                     update: { value: newWelcomeMsg },
@@ -44,7 +65,7 @@ export function setupWelcomeManager(bot: Telegraf, prisma: PrismaClient) {
                 });
 
                 welcomeStates.delete(ctx.from.id);
-                await ctx.reply("✅ تم حفظ رسالة الترحيب بنجاح! جرب دلوقتي ابعت /start وشوف النتيجة.");
+                await ctx.reply("✅ <b>تم حفظ رسالة الترحيب بنجاح!</b>\nجرب الآن إرسال /start لرؤية النتيجة.", { parse_mode: "HTML" });
             } catch (error) {
                 console.error(error);
                 await ctx.reply("❌ حدث خطأ أثناء حفظ الرسالة.");
