@@ -34,7 +34,7 @@ export function getAdminPanelKeyboard(loginNotif: boolean, blockNotif: boolean) 
     ]);
 }
 
-// 2. دالة لوحة "إدارة المحتوى" (نفس الأزرار المطلوبة بالمللي)
+// 2. دالة لوحة "إدارة المحتوى" 
 export function getContentManagementKeyboard() {
     return Markup.inlineKeyboard([
         [Markup.button.callback("رسالة الترحيب 👋", "admin_welcome_msg")],
@@ -52,6 +52,35 @@ export function getContentManagementKeyboard() {
         [Markup.button.callback("الترجمة 🌐", "admin_translation")],
         [Markup.button.callback("معلومات البوت ℹ️", "admin_bot_info")],
         [Markup.button.callback("المساعدة ❓", "admin_help")],
-        [Markup.button.callback("• رجوع •", "admin_panel")] // الزرار ده هيرجعك للوحة الأساسية
+        [Markup.button.callback("• رجوع •", "admin_panel")] 
+    ]);
+}
+
+// 3. دالة لوحة "رسالة الترحيب" (نفس تصميم الصورة بالظبط)
+export function getWelcomeMessageKeyboard() {
+    return Markup.inlineKeyboard([
+        [
+            Markup.button.callback("تعيين الرسالة 📝", "set_welcome_msg"), 
+            Markup.button.callback("مسح 🗑️", "clear_welcome_msg")
+        ],
+        [Markup.button.callback("الوسائط 📎 ❌", "toggle_welcome_media")],
+        [Markup.button.callback("رسالة لكل لغة 🌐", "welcome_msg_languages")],
+        [Markup.button.callback("—— الإعدادات ——", "no_action_separator")],
+        [Markup.button.callback("رد تلقائي 💬 ✅", "toggle_welcome_auto_reply")],
+        [Markup.button.callback("حماية المحتوى 🔒 ❌", "toggle_welcome_protect")],
+        [Markup.button.callback("معاينة الروابط 🔗 ✅", "toggle_welcome_link_preview")],
+        [
+            Markup.button.callback("صغير 🔽 ❌", "welcome_preview_small"),
+            Markup.button.callback("كبير 🔼 ❌", "welcome_preview_large"),
+            Markup.button.callback("فوق ⬆️ ❌", "welcome_preview_above")
+        ],
+        [Markup.button.callback("رابط المعاينة 🔗", "welcome_preview_link")],
+        [Markup.button.callback("—— تخصيص ——", "no_action_separator")],
+        [
+            Markup.button.callback("الاختصارات ⌨️", "welcome_shortcuts"), 
+            Markup.button.callback("الأزرار 🔘", "welcome_buttons")
+        ],
+        [Markup.button.callback("شرح القسم ❓", "help_welcome_msg")],
+        [Markup.button.callback("• رجوع •", "admin_content")]
     ]);
 }
