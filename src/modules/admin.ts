@@ -34,29 +34,27 @@ export function getAdminPanelKeyboard(loginNotif: boolean, blockNotif: boolean) 
     ]);
 }
 
-// 2. دالة لوحة "إدارة المحتوى" 
+// 2. دالة لوحة "إدارة المحتوى" (مطابقة للصورة بالمللي)
 export function getContentManagementKeyboard() {
     return Markup.inlineKeyboard([
         [Markup.button.callback("رسالة الترحيب 👋", "admin_welcome_msg")],
         [Markup.button.callback("الردود التلقائية 💬", "admin_auto_replies")],
         [
-            Markup.button.callback("تعديل الأزرار ✏️", "admin_edit_buttons"),
-            Markup.button.callback("الأزرار الشفافة 🔘", "admin_transparent_buttons")
+            Markup.button.callback("الأزرار الشفافة 🔘", "admin_transparent_buttons"),
+            Markup.button.callback("تعديل الأزرار ✏️", "admin_edit_buttons")
         ],
         [Markup.button.callback("الاختصارات 📎", "admin_shortcuts")],
         [
-            Markup.button.callback("قائمة التعديلات 📋", "admin_edits_list"),
-            Markup.button.callback("تعديل المحتوى ✏️", "admin_edit_content")
+            Markup.button.callback("تعديل المحتوى ✏️", "admin_edit_content"),
+            Markup.button.callback("قائمة التعديلات 📋", "admin_edits_list")
         ],
-        [Markup.button.callback("ديب لينك مخصص (0) 🔗", "admin_deep_link")],
-        [Markup.button.callback("الترجمة 🌐", "admin_translation")],
         [Markup.button.callback("معلومات البوت ℹ️", "admin_bot_info")],
         [Markup.button.callback("المساعدة ❓", "admin_help")],
         [Markup.button.callback("• رجوع •", "admin_panel")] 
     ]);
 }
 
-// 3. دالة لوحة "رسالة الترحيب" (نفس تصميم الصورة بالظبط)
+// 3. دالة لوحة "رسالة الترحيب"
 export function getWelcomeMessageKeyboard() {
     return Markup.inlineKeyboard([
         [
