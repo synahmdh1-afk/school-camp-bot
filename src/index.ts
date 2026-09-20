@@ -43,8 +43,14 @@ setupButtonManager(bot, prisma);
 setupWelcomeManager(bot, prisma); 
 
 bot.command("start", async (ctx) => {
-    let welcomeSetting = await prisma.setting.findUnique({ where: { key: "welcome_message" } });
+    // جلب الرسالة وإعدادات معاينة الروابط من الداتا بيز
+    const [welcomeSetting, linkPreviewSetting] = await Promise.all([
+        prisma.setting.findUnique({ where: { key: "welcome_message" } }),
+        prisma.setting.findUnique({ where: { key: "welcome_link_preview" } })
+    ]);
+
     let welcomeText = welcomeSetting?.value || "أهلاً بك يا #name في بوت ثانوية الدراسي! 🎓\nاختر من القائمة أدناه:";
+    const disableWebPagePreview = linkPreviewSetting?.value === "false";
 
     const safeFirstName = escapeHTML(ctx.from.first_name || "مستخدم");
     const safeUsername = ctx.from.username ? `@${escapeHTML(ctx.from.username)}` : safeFirstName;
@@ -59,23 +65,20 @@ bot.command("start", async (ctx) => {
     const user = await prisma.user.findUnique({ where: { id: BigInt(ctx.from.id) } });
     const keyboard = await buildDynamicKeyboard(null);
 
-    // 🚀 التعديل هنا: دمج زراير الإدارة بالكامل في القائمة الرئيسية
+    // دمج زراير الإدارة في رسالة الترحيب للمطور
     if (user && (user.role === "OWNER" || user.role === "ADMIN")) {
         const adminKeyboard = getAdminPanelKeyboard(true, true);
-        
-        // إضافة فاصل شيك بين زراير المستخدمين وزراير الإدارة
         keyboard.reply_markup.inline_keyboard.push([
             Markup.button.callback("—— 👨‍💻 لوحة الإدارة ——", "no_action_separator")
         ]);
-        
-        // رص كل زراير الإدارة تحت الفاصل
         keyboard.reply_markup.inline_keyboard.push(...adminKeyboard.reply_markup.inline_keyboard);
     }
 
     try {
         await ctx.reply(welcomeText, {
             reply_markup: keyboard.reply_markup,
-            parse_mode: "HTML" 
+            parse_mode: "HTML",
+            link_preview_options: { is_disabled: disableWebPagePreview }
         });
     } catch (error: any) {
         if (user && (user.role === "OWNER" || user.role === "ADMIN")) {
@@ -87,7 +90,6 @@ bot.command("start", async (ctx) => {
     }
 });
 
-// الأكشن ده هيفضل موجود عشان لو دخلت قسم ورجعت ورا، يرجعك للوحة المطور سليمة
 bot.action("admin_panel", async (ctx) => {
     const user = await prisma.user.findUnique({ where: { id: BigInt(ctx.from!.id) } });
     if (user?.role !== "OWNER" && user?.role !== "ADMIN") return;
@@ -121,6 +123,7 @@ bot.action("help_welcome_msg", async (ctx) => {
     await ctx.answerCbQuery("هذا القسم مخصص للتحكم الكامل في رسالة الترحيب، إضافة وسائط، تعديل الأزرار المرفقة، وضبط الإعدادات.", { show_alert: true });
 });
 
+// شيلنا منها زراير المسح ومعاينة الروابط عشان تشتغل
 const emptyAdminButtons = [
     "admin_settings", "admin_users", "admin_camps", "admin_ads", 
     "admin_trash", "admin_system_support", "toggle_login_notif", 
@@ -128,8 +131,8 @@ const emptyAdminButtons = [
     "admin_auto_replies", "admin_shortcuts", "admin_edits_list", 
     "admin_edit_content", "admin_deep_link", "admin_translation", 
     "admin_bot_info", "admin_help",
-    "clear_welcome_msg", "toggle_welcome_media", "welcome_msg_languages",
-    "toggle_welcome_auto_reply", "toggle_welcome_protect", "toggle_welcome_link_preview",
+    "toggle_welcome_media", "welcome_msg_languages",
+    "toggle_welcome_auto_reply", "toggle_welcome_protect", 
     "welcome_preview_small", "welcome_preview_large", "welcome_preview_above", "welcome_preview_link",
     "welcome_shortcuts", "welcome_buttons"
 ];
