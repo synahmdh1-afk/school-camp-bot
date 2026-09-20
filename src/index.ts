@@ -16,7 +16,6 @@ const bot = new Telegraf(token);
 const prisma = new PrismaClient();
 const OWNER_ID = parseInt(process.env.OWNER_ID || "0");
 
-// 🛡️ دالة تنظيف النصوص عشان تليجرام ميهنجش لو الاسم فيه رموز
 const escapeHTML = (str: string) => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 bot.use(async (ctx, next) => {
@@ -39,7 +38,6 @@ bot.use(async (ctx, next) => {
     return next();
 });
 
-// تشغيل الأنظمة
 const { buildDynamicKeyboard } = setupMenuModule(bot, prisma);
 setupButtonManager(bot, prisma);
 setupWelcomeManager(bot, prisma); 
@@ -48,11 +46,9 @@ bot.command("start", async (ctx) => {
     let welcomeSetting = await prisma.setting.findUnique({ where: { key: "welcome_message" } });
     let welcomeText = welcomeSetting?.value || "أهلاً بك يا #name في بوت ثانوية الدراسي! 🎓\nاختر من القائمة أدناه:";
 
-    // تجهيز اسم المستخدم بأمان
     const safeFirstName = escapeHTML(ctx.from.first_name || "مستخدم");
     const safeUsername = ctx.from.username ? `@${escapeHTML(ctx.from.username)}` : safeFirstName;
 
-    // استبدال الهاشتاقات ببيانات المستخدم الحقيقية بأمان
     welcomeText = welcomeText.replace(/#name_user/g, `<a href="tg://user?id=${ctx.from.id}">${safeFirstName}</a>`);
     welcomeText = welcomeText.replace(/#username/g, safeUsername);
     welcomeText = welcomeText.replace(/#name/g, safeFirstName);
@@ -63,27 +59,35 @@ bot.command("start", async (ctx) => {
     const user = await prisma.user.findUnique({ where: { id: BigInt(ctx.from.id) } });
     const keyboard = await buildDynamicKeyboard(null);
 
-    // لو المطور، نضيف زرار لوحة المطور
+    // 🚀 التعديل هنا: دمج زراير الإدارة بالكامل في القائمة الرئيسية
     if (user && (user.role === "OWNER" || user.role === "ADMIN")) {
+        const adminKeyboard = getAdminPanelKeyboard(true, true);
+        
+        // إضافة فاصل شيك بين زراير المستخدمين وزراير الإدارة
         keyboard.reply_markup.inline_keyboard.push([
-            Markup.button.callback("👨‍💻 لوحة المطور", "admin_panel")
+            Markup.button.callback("—— 👨‍💻 لوحة الإدارة ——", "no_action_separator")
         ]);
+        
+        // رص كل زراير الإدارة تحت الفاصل
+        keyboard.reply_markup.inline_keyboard.push(...adminKeyboard.reply_markup.inline_keyboard);
     }
 
-    // 🛡️ نظام الطوارئ: لو الـ HTML باظ لأي سبب، البوت يبعت الرسالة عادي بدل ما يعطل
     try {
         await ctx.reply(welcomeText, {
             reply_markup: keyboard.reply_markup,
             parse_mode: "HTML" 
         });
-    } catch (error) {
-        console.warn("HTML Parse Error, sending as plain text...");
+    } catch (error: any) {
+        if (user && (user.role === "OWNER" || user.role === "ADMIN")) {
+            await ctx.reply(`⚠️ **تنبيه للمطور: تليجرام رفض كود الترحيب!**\n\n**السبب التقني:**\n<code>${error.message}</code>\n\n📌 *غالباً المشكلة إنك استخدمت إيموجي مدفوع (ممنوع للبوتات العادية) أو نسيت تقفل قوس HTML.*`, { parse_mode: "HTML" });
+        }
         await ctx.reply(welcomeText, {
             reply_markup: keyboard.reply_markup
         });
     }
 });
 
+// الأكشن ده هيفضل موجود عشان لو دخلت قسم ورجعت ورا، يرجعك للوحة المطور سليمة
 bot.action("admin_panel", async (ctx) => {
     const user = await prisma.user.findUnique({ where: { id: BigInt(ctx.from!.id) } });
     if (user?.role !== "OWNER" && user?.role !== "ADMIN") return;
@@ -117,7 +121,6 @@ bot.action("help_welcome_msg", async (ctx) => {
     await ctx.answerCbQuery("هذا القسم مخصص للتحكم الكامل في رسالة الترحيب، إضافة وسائط، تعديل الأزرار المرفقة، وضبط الإعدادات.", { show_alert: true });
 });
 
-// شيلنا "set_welcome_msg" عشان تشتغل بجد
 const emptyAdminButtons = [
     "admin_settings", "admin_users", "admin_camps", "admin_ads", 
     "admin_trash", "admin_system_support", "toggle_login_notif", 
